@@ -1,3 +1,9 @@
+/*
+ * Loads the Poppins font from the local fonts/ folder (no Google Fonts
+ * request). Two weights are available: 400 (regular) and 500 (medium),
+ * so use only those `font-weight` values in the CSS.
+ */
+
 @font-face {
   font-family: "Poppins";
   font-style: normal;

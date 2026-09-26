@@ -1,11 +1,110 @@
-.page {
-  background-color: #fcf5e5;
+/*
+ * Page-level styles and the design tokens used across the whole app.
+ *
+ * DESIGN TOKENS: the CSS custom properties (variables) in :root below.
+ * Every color, radius, shadow and animation timing in the other block
+ * files uses these, e.g. `color: var(--color-text)`. To re-theme the app,
+ * change a value here and it updates everywhere.
+ */
+
+:root {
+  /* Colors */
+  --color-bg: #fcf5e5; /* cream page background */
+  --color-surface: #fff;
+  --color-text: #212121;
+  --color-text-muted: rgba(33, 33, 33, 0.7);
+  --color-text-subtle: rgba(33, 33, 33, 0.45);
+  --color-border: rgba(33, 33, 33, 0.14);
+  --color-danger: #e5484d;
+  --color-like: #ff5a5f;
+  --color-danger-hover: #cd2b31;
+  --color-focus: #2f6fed; /* keyboard focus ring */
+
+  /* Corner rounding */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* Elevation: sm = resting, md = hover/raised, lg = modals */
+  --shadow-sm:
+    0 1px 2px rgba(33, 33, 33, 0.06), 0 1px 3px rgba(33, 33, 33, 0.08);
+  --shadow-md: 0 8px 24px rgba(33, 33, 33, 0.12);
+  --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.24);
+
+  /* Motion: a quick start with a soft landing, used for most transitions */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration: 0.25s;
+
+  /* Layout */
+  --content-width: 1280px; /* max width of the centered content column */
+  --gutter: 40px; /* horizontal page padding (shrinks on mobile below) */
+}
+
+/* Make width/height include padding and border: far easier sizing. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
   font-family: "Poppins", Arial, Helvetica, sans-serif;
-  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img {
+  max-width: 100%;
+}
+
+/* Buttons don't inherit fonts by default; make them match the page. */
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* Visible outline for keyboard users only (:focus-visible skips mouse
+   clicks), so the design stays clean while staying accessible. */
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+/* Column layout so the footer is pushed to the bottom on short pages
+   (.content has flex: 1 and fills the leftover space). */
+.page {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  font-weight: 400;
 }
 
 .page__section {
-  max-width: 1280px;
+  max-width: var(--content-width);
   margin: 0 auto;
+}
+
+@media screen and (max-width: 627px) {
+  :root {
+    --gutter: 16px;
+  }
+}
+
+/* Respect the OS "reduce motion" accessibility setting by effectively
+   turning off every animation and transition. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

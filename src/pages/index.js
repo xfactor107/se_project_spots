@@ -1,323 +1,255 @@
+/**
+ * Entry point for the Spots app.
+ *
+ * Webpack starts bundling from this file (see `entry` in webpack.config.js).
+ * Its only job is to *wire things together*: it creates one instance of each
+ * UI class from src/components/, tells them what to do when the user acts,
+ * and loads the initial data from the API. The actual behavior lives in the
+ * classes themselves, so if you're looking for how something works, jump to
+ * the matching file in src/components/.
+ *
+ * Reading order that makes the most sense:
+ *   1. Setup (API, toast, user info)
+ *   2. Form validation
+ *   3. Popups (modals)
+ *   4. Cards
+ *   5. Button click handlers
+ *   6. Init: the first API request when the page loads
+ */
+
+// Importing the CSS here lets webpack bundle it (via css-loader +
+// MiniCssExtractPlugin) into a single stylesheet in dist/.
 import "./index.css";
 
-import {
-  enableValidation,
-  resetValidation,
-  disableButton,
-} from "../scripts/validation.js";
-
 import Api from "../utils/Api.js";
+import Card from "../components/Card.js";
+import FormValidator from "../components/FormValidator.js";
+import PopupWithConfirmation from "../components/PopupWithConfirmation.js";
+import PopupWithForm from "../components/PopupWithForm.js";
+import PopupWithImage from "../components/PopupWithImage.js";
+import Section from "../components/Section.js";
+import Toast from "../components/Toast.js";
+import UserInfo from "../components/UserInfo.js";
+import {
+  apiConfig,
+  initialCards,
+  validationSettings,
+} from "../utils/constants.js";
 
-const settings = {
-  formSelector: ".modal__form",
-  inputSelector: ".modal__input",
-  submitButtonSelector: ".modal__button",
-  inactiveButtonClass: "modal__button_disabled",
-  inputErrorClass: "modal__input_type_error",
-  errorClass: "modal__error_visible",
-};
+/* ---------- Setup ---------- */
 
-const initialCards = [
-  {
-    name: "Golden Gate Bridge",
-    link: "https://practicum-content.s3.us-west-1.amazonaws.com/software-engineer/spots/7-photo-by-griffin-wooldridge-from-pexels.jpg",
-  },
-  {
-    name: "Val Thorens",
-    link: "https://practicum-content.s3.us-west-1.amazonaws.com/software-engineer/spots/1-photo-by-moritz-feldmann-from-pexels.jpg",
-  },
-  {
-    name: "Restaurant terrace",
-    link: "https://practicum-content.s3.us-west-1.amazonaws.com/software-engineer/spots/2-photo-by-ceiline-from-pexels.jpg",
-  },
-  {
-    name: "An outdoor cafe",
-    link: "https://practicum-content.s3.us-west-1.amazonaws.com/software-engineer/spots/3-photo-by-tubanur-dogan-from-pexels.jpg",
-  },
-  {
-    name: "A very long bridge, over the forest and through the trees",
-    link: "https://practicum-content.s3.us-west-1.amazonaws.com/software-engineer/spots/4-photo-by-maurice-laschet-from-pexels.jpg",
-  },
-  {
-    name: "Tunnel with morning light",
-    link: "https://practicum-content.s3.us-west-1.amazonaws.com/software-engineer/spots/5-photo-by-van-anh-nguyen-from-pexels.jpg",
-  },
-  {
-    name: "Mountain house",
-    link: "https://practicum-content.s3.us-west-1.amazonaws.com/software-engineer/spots/6-photo-by-moritz-feldmann-from-pexels.jpg",
-  },
-];
+// One shared API client for every request (base URL + auth headers).
+const api = new Api(apiConfig);
 
-const api = new Api({
-  baseUrl: "https://around-api.en.tripleten-services.com/v1",
-  headers: {
-    authorization: "73b45784-19b2-4053-852d-56fa72f710be",
-    "Content-Type": "application/json",
-  },
+// The small pill that slides up from the bottom of the screen with errors.
+const toast = new Toast(".toast");
+
+// Owns the profile name/description/avatar on the page, and remembers the
+// current user's id (needed to decide which cards the user may delete).
+const userInfo = new UserInfo({
+  nameSelector: ".profile__name",
+  aboutSelector: ".profile__description",
+  avatarSelector: ".profile__avatar",
 });
 
-const cardsList = document.querySelector(".cards__list");
-const cardTemplate = document
-  .querySelector("#card-template")
-  .content.querySelector(".card");
+// Keep the footer's copyright year current without editing the HTML yearly.
+document.querySelector(".footer__year").textContent = new Date().getFullYear();
 
-const profileNameEl = document.querySelector(".profile__name");
-const profileDescriptionEl = document.querySelector(".profile__description");
-const profileAvatarEl = document.querySelector(".profile__avatar");
+/**
+ * Builds an error handler for a `.catch()`. It logs the real error for
+ * developers and shows a friendly message to the user.
+ *
+ * Usage: `somePromise.catch(handleError("Couldn't save."))`
+ * This is a "function that returns a function" so we can choose the message
+ * up front and let `.catch()` pass in the error later.
+ */
+function handleError(message = "Something went wrong. Please try again.") {
+  return (err) => {
+    console.error(err);
+    toast.show(message);
+  };
+}
 
-const editProfileModal = document.querySelector("#edit-profile-modal");
-const editProfileButton = document.querySelector(".profile__edit-button");
-const editProfileCloseButton = editProfileModal.querySelector(
-  ".modal__close-button"
+/* ---------- Form validation ---------- */
+
+// One FormValidator per <form> on the page, stored by the form's `name`
+// attribute so we can look them up later, e.g. formValidators["new-post"].
+const formValidators = {};
+
+Array.from(document.forms).forEach((form) => {
+  const validator = new FormValidator(validationSettings, form);
+  validator.enableValidation();
+  // Gotcha: we use getAttribute("name") instead of `form.name`. Forms expose
+  // their inputs as properties, so on the edit-profile form (which has an
+  // <input name="name">) `form.name` returns that input, not the string.
+  formValidators[form.getAttribute("name")] = validator;
+});
+
+/* ---------- Popups (modals) ---------- */
+// Each popup is tied to one modal element in index.html by its id.
+// `handleSubmit` must return a Promise. The popup shows "Saving...", waits
+// for it, closes itself on success and calls `handleError` on failure.
+
+const imagePopup = new PopupWithImage("#preview-modal");
+
+const deletePopup = new PopupWithConfirmation("#delete-modal", {
+  handleError: handleError("Couldn't delete the post. Please try again."),
+});
+
+// `values` is an object built from the form inputs' `name` attributes,
+// e.g. { name: "Bessie", about: "Civil Aviator" }. That matches exactly
+// what the API expects, so we can pass it straight through.
+const profilePopup = new PopupWithForm("#edit-profile-modal", {
+  handleSubmit: (values) =>
+    api.editUserInfo(values).then((user) => userInfo.setUserInfo(user)),
+  handleError: handleError(),
+});
+
+const avatarPopup = new PopupWithForm("#edit-avatar-modal", {
+  handleSubmit: (values) =>
+    api.editAvatarInfo(values).then((user) => userInfo.setUserInfo(user)),
+  handleError: handleError(),
+});
+
+const newPostPopup = new PopupWithForm("#new-post-modal", {
+  handleSubmit: (values) =>
+    // The server responds with the saved card (including its new _id),
+    // which we render at the top of the list.
+    api.addCard(values).then((card) => cardSection.addItem(card)),
+  handleError: handleError(),
+});
+
+// Attach close/submit listeners once. (Doing this inside open() would stack
+// up duplicate listeners every time a modal opened.)
+[imagePopup, deletePopup, profilePopup, avatarPopup, newPostPopup].forEach(
+  (popup) => popup.setEventListeners()
 );
-const editProfileFormEl = editProfileModal.querySelector(".modal__form");
-const editProfileNameInput = document.querySelector("#profile-name-input");
-const editProfileDescriptionInput = document.querySelector(
-  "#profile-description-input"
-);
 
-const newPostModal = document.querySelector("#new-post-modal");
-const newPostButton = document.querySelector(".profile__add-button");
-const newPostCloseButton = newPostModal.querySelector(".modal__close-button");
-const newPostFormEl = newPostModal.querySelector(".modal__form");
-const newPostImageLinkInput = document.querySelector("#card-image-input");
-const newPostCaptionInput = document.querySelector(
-  "#caption-description-input"
-);
+/* ---------- Cards ---------- */
 
-const previewModal = document.querySelector("#preview-modal");
-const previewModalCloseBtn = previewModal.querySelector(".modal__close-button");
-const previewImageEl = previewModal.querySelector(".modal__image");
-const previewCaptionEl = previewModal.querySelector(".modal__caption");
-
-const cardSubmitBtn = document.querySelector(".modal__button");
-
-const avatarModal = document.querySelector("#edit-avatar-modal");
-const avatarForm = avatarModal.querySelector(".modal__form");
-const avatarSubmitBtn = avatarModal.querySelector(".modal__button");
-const avatarModalCloseBtn = avatarModal.querySelector(".modal__close-button");
-const avatarInput = avatarModal.querySelector("#avatar-name-input");
-const avatarEditButton = document.querySelector(".profile__avatar-edit-btn");
-
-const deleteModal = document.querySelector("#delete-modal");
-const deleteModalCloseBtn = deleteModal.querySelector(".modal__close-button");
-const deleteCancelBtn = document.querySelector("#delete-cancel-button");
-
-let cardIdToDelete = null;
-let cardToDelete = null;
-
-const deleteConfirmBtn = deleteModal.querySelector(
-  ".modal__button_type_delete"
-);
-
-function openModal(modal) {
-  modal.classList.add("modal_is-opened");
-  document.addEventListener("keydown", closeModalByEscape);
-  modal.addEventListener("mousedown", closeModalByOverlay);
-}
-
-function closeModal(modal) {
-  modal.classList.remove("modal_is-opened");
-  document.removeEventListener("keydown", closeModalByEscape);
-  modal.removeEventListener("mousedown", closeModalByOverlay);
-}
-
-function closeModalByEscape(evt) {
-  if (evt.key === "Escape") {
-    const modalIsOpened = document.querySelector(".modal_is-opened");
-    closeModal(modalIsOpened);
-  }
-}
-
-function closeModalByOverlay(evt) {
-  if (evt.target === evt.currentTarget) {
-    closeModal(evt.target);
-  }
-}
-
-function handleDeleteCard(cardElement, data) {
-  cardToDelete = cardElement;
-  cardIdToDelete = data._id;
-  openModal(deleteModal);
-}
-
-function handleDeleteSubmit(evt) {
-  evt.preventDefault();
+/**
+ * Called by a Card when its heart is clicked.
+ *
+ * Uses an "optimistic update": the heart changes *immediately* so the UI
+ * feels instant, then we confirm with the server. If the request fails,
+ * we undo the change and tell the user.
+ */
+function handleLikeClick(card) {
+  const shouldLike = !card.isLiked();
+  card.setLiked(shouldLike);
   api
-    .deleteCard(cardIdToDelete)
-    .then(() => {
-      if (cardToDelete) {
-        cardToDelete.remove();
-      }
-      closeModal(deleteModal);
-    })
+    .changeLikeStatus(card.getId(), shouldLike)
+    .then((res) => card.setLiked(res.isLiked)) // trust the server's answer
     .catch((err) => {
-      console.error("Failed to delete card:", err);
+      card.setLiked(!shouldLike); // roll back
+      handleError("Couldn't update like. Please try again.")(err);
     });
 }
 
-function getCardElement(data) {
-  const cardElement = cardTemplate.cloneNode(true);
-  const cardTitleEl = cardElement.querySelector(".card__title");
-  const cardImageEl = cardElement.querySelector(".card__image");
-  const cardLikeBtnEl = cardElement.querySelector(".card__like-button");
-  const cardDeleteBtnEl = cardElement.querySelector(".card__delete-button");
+/**
+ * Called by a Card when its trash icon is clicked. Nothing is deleted yet:
+ * we open the "Delete this post?" modal and hand it the action to run if
+ * the user confirms.
+ */
+function handleDeleteClick(card) {
+  deletePopup.open(() =>
+    api.deleteCard(card.getId()).then(() => {
+      card.remove();
+      cardSection.updateEmptyState(); // show "No posts yet" if it was the last
+    })
+  );
+}
 
-  cardImageEl.src = data.link;
-  cardImageEl.alt = data.name;
-  cardTitleEl.textContent = data.name;
+/**
+ * Turns one card object from the API into a ready-to-insert <li> element.
+ * Section calls this for every card it renders.
+ */
+function createCard(data) {
+  const userId = userInfo.getId();
+  const card = new Card(data, "#card-template", {
+    // Only show the trash icon on the current user's own posts. (With the
+    // shared demo account every post is "ours", but this keeps it correct.)
+    canDelete: !data.owner || !userId || data.owner === userId,
+    handleImageClick: (cardData) => imagePopup.open(cardData),
+    handleLikeClick,
+    handleDeleteClick,
+  });
+  return card.getView();
+}
 
-  cardLikeBtnEl.addEventListener("click", () => {
-    const isLiked = cardLikeBtnEl.classList.contains(
-      "card__like-button_active"
+// Manages the <ul class="cards__list">: rendering, loading placeholders,
+// and the "No posts yet" message.
+const cardSection = new Section(
+  { renderer: createCard, emptySelector: ".cards__empty" },
+  ".cards__list"
+);
+
+/**
+ * Re-creates the starter posts when the account has none.
+ *
+ * Why: every visitor shares one demo account, so anyone can delete all the
+ * posts. Without this the live site would load as an empty page.
+ *
+ * How: the server lists newest posts first, so we post the cards in
+ * *reverse* order, one after another (not in parallel), so they end up
+ * displayed in the same order as `initialCards`. The `reduce` builds a
+ * chain: Promise -> addCard(6th) -> addCard(5th) -> ... and collects the
+ * created cards into an array.
+ */
+function seedInitialCards() {
+  return initialCards
+    .slice() // copy first, because reverse() mutates the array in place
+    .reverse()
+    .reduce(
+      (chain, card) =>
+        chain.then((created) =>
+          api.addCard(card).then((res) => [res, ...created])
+        ),
+      Promise.resolve([])
     );
+}
 
-    if (isLiked) {
-      api
-        .unlikeCard(data._id)
-        .then(() => {
-          cardLikeBtnEl.classList.remove("card__like-button_active");
-        })
-        .catch(console.error);
-    } else {
-      api
-        .likeCard(data._id)
-        .then(() => {
-          cardLikeBtnEl.classList.add("card__like-button_active");
-        })
-        .catch(console.error);
-    }
+/* ---------- Buttons that open popups ---------- */
+
+document
+  .querySelector(".profile__edit-button")
+  .addEventListener("click", () => {
+    // Pre-fill the form with what's currently on the page.
+    profilePopup.setInputValues(userInfo.getUserInfo());
+    // Clear any leftover error messages from the last time it was open.
+    formValidators["edit-profile"].resetValidation();
+    profilePopup.open();
   });
 
-  cardDeleteBtnEl.addEventListener("click", () =>
-    handleDeleteCard(cardElement, data)
-  );
+document.querySelector(".profile__add-button").addEventListener("click", () => {
+  formValidators["new-post"].resetValidation();
+  newPostPopup.open();
+});
 
-  cardImageEl.addEventListener("click", () => {
-    previewImageEl.src = data.link;
-    previewImageEl.alt = data.name;
-    previewCaptionEl.textContent = data.name;
-    openModal(previewModal);
+document
+  .querySelector(".profile__avatar-edit-btn")
+  .addEventListener("click", () => {
+    formValidators["edit-avatar"].resetValidation();
+    avatarPopup.open();
   });
 
-  if (data.isLiked) {
-    cardLikeBtnEl.classList.add("card__like-button_active");
-  }
+/* ---------- Init: runs once when the page loads ---------- */
 
-  return cardElement;
-}
+// Show grey placeholder boxes while we wait for the API.
+cardSection.showSkeletons();
 
-function handleProfileFormSubmit(evt) {
-  evt.preventDefault();
-  api
-    .editUserInfo({
-      name: editProfileNameInput.value,
-      about: editProfileDescriptionInput.value,
-    })
-    .then((data) => {
-      profileNameEl.textContent = data.name;
-      profileDescriptionEl.textContent = data.about;
-      closeModal(editProfileModal);
-    })
-    .catch((err) => {
-      console.error(err);
-    });
-}
-
-function handleAddCardSubmit(evt) {
-  evt.preventDefault();
-  const name = newPostCaptionInput.value;
-  const link = newPostImageLinkInput.value;
-
-  api
-    .addCard({ name, link })
-    .then((data) => {
-      const cardElement = getCardElement(data);
-      cardsList.prepend(cardElement);
-      evt.target.reset();
-      disableButton(cardSubmitBtn, settings);
-      closeModal(newPostModal);
-    })
-    .catch((err) => {
-      console.error("Failed to add new card:", err);
-    });
-}
-
-editProfileButton.addEventListener("click", () => {
-  editProfileNameInput.value = profileNameEl.textContent;
-  editProfileDescriptionInput.value = profileDescriptionEl.textContent;
-  const editProfileInputList = [
-    editProfileNameInput,
-    editProfileDescriptionInput,
-  ];
-  const editProfileSubmitBtn =
-    editProfileFormEl.querySelector(".modal__button");
-  resetValidation(
-    editProfileFormEl,
-    editProfileInputList,
-    editProfileSubmitBtn,
-    settings
-  );
-
-  openModal(editProfileModal);
-});
-
-editProfileCloseButton.addEventListener("click", () =>
-  closeModal(editProfileModal)
-);
-
-editProfileFormEl.addEventListener("submit", handleProfileFormSubmit);
-
-newPostButton.addEventListener("click", () => {
-  const newPostInputList = [newPostImageLinkInput, newPostCaptionInput];
-  const newPostSubmitBtn = newPostFormEl.querySelector(".modal__button");
-  resetValidation(newPostFormEl, newPostInputList, newPostSubmitBtn, settings);
-  openModal(newPostModal);
-});
-
-newPostCloseButton.addEventListener("click", () => closeModal(newPostModal));
-
-newPostFormEl.addEventListener("submit", handleAddCardSubmit);
-
-previewModalCloseBtn.addEventListener("click", () => {
-  closeModal(previewModal);
-});
-
-avatarEditButton.addEventListener("click", () => openModal(avatarModal));
-avatarModalCloseBtn.addEventListener("click", () => closeModal(avatarModal));
-
-function handleAvatarSubmit(evt) {
-  evt.preventDefault();
-  api
-    .editAvatarInfo({ avatar: avatarInput.value })
-    .then((data) => {
-      profileAvatarEl.src = data.avatar;
-      closeModal(avatarModal);
-    })
-    .catch(console.error);
-}
-
-avatarForm.addEventListener("submit", handleAvatarSubmit);
-
-deleteModalCloseBtn.addEventListener("click", () => closeModal(deleteModal));
-
-deleteCancelBtn.addEventListener("click", () => closeModal(deleteModal));
-
-deleteConfirmBtn.addEventListener("click", handleDeleteSubmit);
-
+// getAppInfo() fetches the cards and the user at the same time
+// (Promise.all), then gives us both results as an array: [cards, user].
 api
   .getAppInfo()
   .then(([cards, user]) => {
-    cards.forEach((item) => {
-      const cardElement = getCardElement(item);
-      cardsList.append(cardElement);
-    });
-    profileAvatarEl.src = user.avatar;
-    profileNameEl.textContent = user.name;
-    profileDescriptionEl.textContent = user.about;
+    userInfo.setUserInfo(user);
+    // Returning a Promise from .then() makes the next .then() wait for it,
+    // so seeding finishes before we render.
+    return cards.length ? cards : seedInitialCards();
   })
+  .then((cards) => cardSection.renderItems(cards))
   .catch((err) => {
-    console.error(err);
+    cardSection.renderItems([]); // replace the skeletons with the empty state
+    handleError("Couldn't load posts. Check your connection and refresh.")(err);
   });
-
-enableValidation(settings);

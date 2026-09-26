@@ -1,3 +1,15 @@
+/*
+ * Stylesheet entry point. It imports every other CSS file in order.
+ *
+ * The project uses BEM (Block__Element_modifier) naming:
+ *   .card                     -> a Block (one file per block in src/blocks/)
+ *   .card__title              -> an Element inside that block
+ *   .card__like-button_active -> a Modifier: a variation or state
+ *
+ * Order matters: vendor resets first, then page.css (which defines the
+ * shared design tokens), then the individual blocks.
+ */
+
 @import url(../vendor/normalize.css);
 @import url(../vendor/fonts.css);
 @import url(../blocks/page.css);
@@ -8,3 +20,4 @@
 @import url(../blocks/card.css);
 @import url(../blocks/footer.css);
 @import url(../blocks/modal.css);
+@import url(../blocks/toast.css);

@@ -1,11 +1,31 @@
+/*
+ * Top bar with the logo. It stays pinned while scrolling (position: sticky)
+ * with a frosted-glass look: a semi-transparent background plus
+ * backdrop-filter blurs whatever scrolls underneath.
+ */
+
 .header {
-  background-color: #fff;
-  padding: 10px 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Same width + padding as the content below, so the logo lines up with
+   the left edge of the profile and cards. */
+.header__inner {
+  max-width: calc(var(--content-width) + 2 * var(--gutter));
+  margin: 0 auto;
+  padding: 16px var(--gutter);
   display: flex;
-  justify-content: center;
+  align-items: center;
 }
 
 .header__logo {
+  display: block;
   width: 94px;
   height: 26px;
 }

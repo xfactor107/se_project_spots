@@ -1,36 +1,44 @@
 {
   "name": "se_project_spots",
   "version": "0.1.0",
-  "description": "Spots project",
-  "main": "index.js",
+  "description": "Responsive photo-sharing profile page built with vanilla JavaScript and a REST API",
+  "main": "src/pages/index.js",
   "scripts": {
     "build": "webpack --mode production",
     "dev": "webpack serve --mode development",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ajjime11/se_project_spots.git"
+    "url": "git+https://github.com/xfactor107/se_project_spots.git"
   },
   "author": "Alejandro Jimenez",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/ajjime11/se_project_spots/issues"
+    "url": "https://github.com/xfactor107/se_project_spots/issues"
   },
-  "homepage": "https://github.com/ajjime11/se_project_spots#readme",
+  "homepage": "https://github.com/xfactor107/se_project_spots#readme",
   "devDependencies": {
     "@babel/core": "7.18.9",
     "@babel/preset-env": "7.18.9",
+    "@eslint/js": "^9.39.5",
     "autoprefixer": "10.4.7",
     "babel-loader": "8.2.5",
     "clean-webpack-plugin": "4.0.0",
     "css-loader": "6.7.1",
     "cssnano": "5.1.12",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
     "gh-pages": "^6.3.0",
+    "globals": "^17.12.0",
     "html-webpack-plugin": "5.5.0",
     "mini-css-extract-plugin": "2.6.1",
     "postcss-loader": "7.0.1",
+    "prettier": "^3.9.9",
     "webpack": "5.76.0",
     "webpack-cli": "4.10.0",
     "webpack-dev-server": "4.9.3"

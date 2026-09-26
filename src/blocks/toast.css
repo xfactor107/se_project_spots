@@ -1,0 +1,35 @@
+/*
+ * Error message pill at the bottom of the screen (see components/Toast.js).
+ *
+ * Hidden by default. Adding .toast_visible fades and slides it in.
+ * `visibility` is delayed on hide (transition: visibility 0s linear
+ * var(--duration)) so the fade-out finishes before it becomes hidden.
+ */
+
+.toast {
+  position: fixed;
+  left: 50%; /* with translate(-50%) below, centers it horizontally */
+  bottom: 24px;
+  z-index: 100;
+  max-width: calc(100% - 32px);
+  padding: 12px 20px;
+  border-radius: 999px;
+  background-color: var(--color-text);
+  color: #fff;
+  font-size: 14px;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 12px);
+  transition:
+    opacity var(--duration) var(--ease),
+    transform var(--duration) var(--ease),
+    visibility 0s linear var(--duration);
+}
+
+.toast_visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+  transition-delay: 0s;
+}
