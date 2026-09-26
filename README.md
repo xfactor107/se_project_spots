@@ -1,32 +1,104 @@
-Project 3: Spots
-https://ajjime11.github.io/se_project_spots/
+# Spots
 
-Overview
+[![CI](https://github.com/ajjime11/se_project_spots/actions/workflows/ci.yml/badge.svg)](https://github.com/ajjime11/se_project_spots/actions/workflows/ci.yml)
 
-Welcome to the Spots project! This is my third project in the TripleTen Software Engineering bootcamp, a significant step in my journey to becoming a professional developer. As I continue to build my portfolio and transition into a tech career, this project serves as a demonstration of my skills in responsive web design, specifically for popular screen sizes.
+A responsive photo-sharing profile page where users can post the places they love, like and delete posts, and edit their profile, all synced to a REST API.
 
-Figma
+**[Live demo →](https://ajjime11.github.io/se_project_spots/)**
 
-Link to the project on Figma
+Built as part of the TripleTen Software Engineering program.
 
-Images
+![Spots on desktop](docs/screenshots/desktop.jpg)
 
-For this project, I practiced a crucial industry skill: optimizing images directly from Figma. This ensures faster load times and a more efficient user experience. To further enhance performance, I've used tools like TinyPNG to compress the image assets.
+<p align="center">
+  <img src="docs/screenshots/mobile.jpg" alt="Spots on mobile" width="260" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/new-post-modal.jpg" alt="New post form with live validation" width="520" />
+</p>
 
-My Wins
+## Features
 
-This project was a great opportunity to apply new concepts and overcome challenges. My key wins include:
+- **Profile management**: edit name, description, and avatar
+- **Posts**: add a photo by URL, open it in a full-size preview, like/unlike, and delete (with confirmation)
+- **Live data**: all changes persist through a REST API, with optimistic like updates
+- **Form validation**: real-time, accessible validation with inline error messages
+- **Polished UX**: loading skeletons, "Saving…" button states, error toasts, and an empty state
+- **Accessible**: labelled dialogs, focus trapping and restoration, keyboard support (Esc to close), and visible focus rings
+- **Responsive**: fluid grid from mobile (320px) up to wide desktop screens
+- **Respects `prefers-reduced-motion`**
 
-Creating a fully responsive layout that adapts seamlessly to different devices.
+## Tech stack
 
-Practicing image optimization techniques for improved website performance.
+| Area    | Tools                                                      |
+| ------- | ---------------------------------------------------------- |
+| Markup  | Semantic HTML5, `<template>` elements                      |
+| Styling | CSS with BEM methodology, custom properties, Grid, Flexbox |
+| Logic   | Vanilla JavaScript (ES6 classes & modules), Fetch API      |
+| Icons   | Inline SVG (`currentColor`, themeable from CSS)            |
+| Tooling | Webpack 5, Babel, PostCSS, ESLint, Prettier                |
+| CI/CD   | GitHub Actions → GitHub Pages                              |
 
-Gaining more confidence in my front-end development skills.
+## Getting started
 
-Goals
+```bash
+git clone https://github.com/ajjime11/se_project_spots.git
+cd se_project_spots
+npm install
+npm run dev      # start dev server at http://localhost:8080
+```
 
-As I continue my journey in software engineering, my goal is to solidify my technical skills and prepare for a rewarding career in the tech industry. This project is a foundational piece of that effort, helping me build the portfolio necessary for remote work in Data Annotation. I'm embracing the "tech bro" mindset and am determined to restore my "inner flame" and find success in this field.
+| Script                 | Description                                 |
+| ---------------------- | ------------------------------------------- |
+| `npm run dev`          | Start the webpack dev server with reloading |
+| `npm run build`        | Create a production build in `dist/`        |
+| `npm run lint`         | Lint JavaScript with ESLint                 |
+| `npm run format`       | Format all files with Prettier              |
+| `npm run format:check` | Check formatting without writing            |
+| `npm run deploy`       | Build and publish `dist/` manually          |
 
-Next Steps
+Every push and pull request runs lint, format check, and build in GitHub Actions. Pushes to `main` deploy to GitHub Pages automatically.
 
-This project is complete, but the learning continues. I am excited to apply the knowledge and experience gained here to future challenges as I progress through the TripleTen bootcamp and beyond.
+## Architecture
+
+The UI is split into small, single-purpose classes that `pages/index.js` wires together:
+
+| Class                   | Responsibility                                              |
+| ----------------------- | ----------------------------------------------------------- |
+| `Api`                   | Wraps every REST call and normalizes error handling         |
+| `Card`                  | Builds one post from the `<template>`, exposes like/remove  |
+| `Section`               | Renders a list of items, loading skeletons, and empty state |
+| `Popup`                 | Base modal: open/close, Esc & overlay close, focus trap     |
+| `PopupWithForm`         | Collects form values, shows "Saving…", closes on success    |
+| `PopupWithImage`        | Full-size image preview                                     |
+| `PopupWithConfirmation` | Confirms a destructive action before running it             |
+| `FormValidator`         | Live validation with accessible error messages              |
+| `UserInfo`              | Reads and updates the profile on the page                   |
+| `Toast`                 | Short status messages for errors                            |
+
+```
+src/
+├── blocks/        # One CSS file per BEM block (card, modal, profile…)
+├── components/    # UI classes listed above
+├── pages/         # Entry point: index.js + index.css
+├── utils/         # Api class, constants, helpers
+├── vendor/        # normalize.css and font-face declarations
+├── images/
+└── index.html
+```
+
+## Design notes & limitations
+
+- **Shared demo account.** The API is a course-provided sandbox authenticated by a single token. There is no login, so every visitor sees and edits the same profile and posts. The token is visible in the client bundle by design. In a production app it would be replaced by per-user authentication (e.g. sessions or JWTs issued by a backend) and never shipped to the browser.
+- **Self-healing demo data.** Because anyone can delete every post, the app re-seeds a set of starter posts when the feed is empty, so the live demo never loads blank.
+- **Optimistic likes.** Likes update instantly and roll back if the request fails.
+
+## What I learned
+
+- Structuring a vanilla JS app with object-oriented components and promise chains
+- Writing reusable, configurable form validation
+- Designing a small token-based design system with CSS custom properties
+- Making interactive UI (modals, icon buttons) accessible to keyboard and screen-reader users
+
+## Author
+
+**Alejandro Jimenez**, [GitHub](https://github.com/ajjime11)

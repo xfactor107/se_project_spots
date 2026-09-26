@@ -1,0 +1,62 @@
+# Continuous integration and deployment (GitHub Actions).
+#
+# On every push to main and every pull request, GitHub starts a fresh
+# Linux machine that installs dependencies, lints, checks formatting and
+# builds. If any step fails, the run is marked red on GitHub.
+#
+# On pushes to main only, it also publishes the build to the gh-pages
+# branch, which is what https://ajjime11.github.io/se_project_spots/ serves.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # adds a "Run workflow" button in the Actions tab
+
+# If you push again while a run is in progress, cancel the old run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # `npm ci` installs exactly what package-lock.json lists (faster and
+      # more reproducible than `npm install`).
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run build
+
+      # Hand the built site to the deploy job below.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+  deploy:
+    needs: build # only runs if every build step passed
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed to push to the gh-pages branch
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      # Publishes to the gh-pages branch, the same target as `npm run deploy`.
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
