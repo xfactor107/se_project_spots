@@ -5,7 +5,7 @@
 # builds. If any step fails, the run is marked red on GitHub.
 #
 # On pushes to main only, it also publishes the build to the gh-pages
-# branch, which is what https://ajjime11.github.io/se_project_spots/ serves.
+# branch, which is what https://xfactor107.github.io/se_project_spots/ serves.
 name: CI
 
 on:

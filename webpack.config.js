@@ -24,7 +24,7 @@ module.exports = {
     path: path.resolve(__dirname, "dist"),
     filename: "main.js",
     // Relative asset URLs so the site also works from a sub-path like
-    // https://ajjime11.github.io/se_project_spots/
+    // https://xfactor107.github.io/se_project_spots/
     publicPath: "",
   },
 

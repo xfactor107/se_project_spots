@@ -14,14 +14,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ajjime11/se_project_spots.git"
+    "url": "git+https://github.com/xfactor107/se_project_spots.git"
   },
   "author": "Alejandro Jimenez",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/ajjime11/se_project_spots/issues"
+    "url": "https://github.com/xfactor107/se_project_spots/issues"
   },
-  "homepage": "https://github.com/ajjime11/se_project_spots#readme",
+  "homepage": "https://github.com/xfactor107/se_project_spots#readme",
   "devDependencies": {
     "@babel/core": "7.18.9",
     "@babel/preset-env": "7.18.9",

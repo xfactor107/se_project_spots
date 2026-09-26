@@ -1,10 +1,10 @@
 # Spots
 
-[![CI](https://github.com/ajjime11/se_project_spots/actions/workflows/ci.yml/badge.svg)](https://github.com/ajjime11/se_project_spots/actions/workflows/ci.yml)
+[![CI](https://github.com/xfactor107/se_project_spots/actions/workflows/ci.yml/badge.svg)](https://github.com/xfactor107/se_project_spots/actions/workflows/ci.yml)
 
 A responsive photo-sharing profile page where users can post the places they love, like and delete posts, and edit their profile, all synced to a REST API.
 
-**[Live demo →](https://ajjime11.github.io/se_project_spots/)**
+**[Live demo →](https://xfactor107.github.io/se_project_spots/)**
 
 Built as part of the TripleTen Software Engineering program.
 
@@ -41,7 +41,7 @@ Built as part of the TripleTen Software Engineering program.
 ## Getting started
 
 ```bash
-git clone https://github.com/ajjime11/se_project_spots.git
+git clone https://github.com/xfactor107/se_project_spots.git
 cd se_project_spots
 npm install
 npm run dev      # start dev server at http://localhost:8080
@@ -101,4 +101,4 @@ src/
 
 ## Author
 
-**Alejandro Jimenez**, [GitHub](https://github.com/ajjime11)
+**Alejandro Jimenez**, [GitHub](https://github.com/xfactor107)
